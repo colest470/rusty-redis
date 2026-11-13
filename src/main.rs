@@ -27,13 +27,13 @@ fn main() {
                         }
                     }
                     Err(e) => {
-                        println!("error: {}", e);
+                        //println!("error: {}", e);
                         break;
                     }
                 }
             }
             Err(e) => {
-                println!("error: {}", e);
+                //println!("error: {}", e);
             }
         }
     }
