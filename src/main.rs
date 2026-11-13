@@ -19,22 +19,22 @@ fn main() {
 
                 let mut buf = [0u8; 1024]; // 1mb of 0 values
                 
-                match stream.read(&mut buf) {
-                    Ok(n) => {
-                        // println!("{:?}", String::from_utf8_lossy(&mut buf[..n]));
-                        if String::from_utf8_lossy(&mut buf[..n]) == "*1\r\n$4\r\nPING\r\n" {
-                            let _ = stream.write_all(b"+PONG\r\n");
-                            let _ = stream.write_all(b"+PONG\r\n");
+                loop {
+                    match stream.read(&mut buf) {
+                        Ok(0) => break,
+                        Ok(_) => {
+                            // println!("{:?}", String::from_utf8_lossy(&mut buf[..n]));
+                                let _ = stream.write_all(b"+PONG\r\n");
                         }
-                    }
-                    Err(e) => {
-                        //println!("error: {}", e);
-                        break;
+                        Err(e) => {
+                            println!("error: {}", e);
+                            break;
+                        }
                     }
                 }
             }
             Err(e) => {
-                //println!("error: {}", e);
+                println!("error: {}", e);
             }
         }
     }
