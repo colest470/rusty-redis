@@ -21,9 +21,6 @@ fn main() {
                 
                 match stream.read(&mut buf) {
                     Ok(n) => {
-                        if n == 0 {
-                            break;
-                        }
                         println!("{:?}", String::from_utf8_lossy(&mut buf[..n]));
                         if String::from_utf8_lossy(&mut buf[..n]) == "*1\r\n$4\r\nPING\r\n" {
                             let _ = stream.write_all(b"+PONG\r\n");
@@ -31,6 +28,7 @@ fn main() {
                     }
                     Err(e) => {
                         println!("error: {}", e);
+                        break;
                     }
                 }
             }
