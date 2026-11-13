@@ -5,7 +5,7 @@ use tokio::net::TcpListener;
 async fn main() {
     let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
 
-    loop {                                          // accept loop: one iteration per client
+    loop {
         let (mut stream, _peer) = listener.accept().await.unwrap();
 
         tokio::spawn(async move {
