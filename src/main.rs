@@ -1,6 +1,8 @@
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
+mod helper;
+
 #[tokio::main]
 async fn main() {
     let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
@@ -15,10 +17,29 @@ async fn main() {
                     Ok(0) => return,
                     Ok(n) => {
                         println!("{:?}", String::from_utf8_lossy(&buf[..n]));
-                        match stream.write_all(b"+PONG\r\n").await {
-                            Ok(_) => println!("Pong success!"),
-                            Err(e) => { println!("write error: {e}"); return; }
+
+                        // let input = String::from_utf8_lossy(&buf[..n]);
+
+                        let input_arg = helper::parse_command(&buf).unwrap();
+
+                        match input_arg.first().map(String::as_str) {
+                            Some("PING") => {
+                                match stream.write_all(b"+PONG\r\n").await {
+                                    Ok(_) => println!("Pong success!"),
+                                    Err(e) => { println!("write error: {e}"); return; }
+                                }
+                            }
+                            Some("ECHO") if input_arg.len() >= 2 => {
+                                let msg = &input_arg[1];
+                                let msg_format = format!("${}\r\n{}\r\n", msg.len(), msg);
+                                let _ = stream.write_all(msg_format.as_bytes()).await.unwrap();
+                            },
+                            _ => {
+                                println!("Unrecognized command");
+                            }
                         }
+
+                        println!("{:?}", input_arg);
                     }
                     Err(e) => { println!("read error: {e}"); return; }
                 }
