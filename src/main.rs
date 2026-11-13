@@ -24,6 +24,7 @@ fn main() {
                         // println!("{:?}", String::from_utf8_lossy(&mut buf[..n]));
                         if String::from_utf8_lossy(&mut buf[..n]) == "*1\r\n$4\r\nPING\r\n" {
                             let _ = stream.write_all(b"+PONG\r\n");
+                            let _ = stream.write_all(b"+PONG\r\n");
                         }
                     }
                     Err(e) => {
