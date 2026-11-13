@@ -1,42 +1,28 @@
-#![allow(unused_imports)]
-use std::net::TcpListener;
-use std::io::{Write, Read};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
 
-fn main() {
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    println!("Logs from your program will appear here!");
+#[tokio::main]
+async fn main() {
+    let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
 
-    // Uncomment the code below to pass the first stage
-    
-    let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
-    
-    for stream in listener.incoming() {
-        match stream {
-            Ok(mut stream) => {
-                //let _ = stream.write_all(b"+PONG\r\n").unwrap(); //.unwrap() changes the Result<_, _> to () which panics if there is an error
+    loop {                                          // accept loop: one iteration per client
+        let (mut stream, _peer) = listener.accept().await.unwrap();
 
-                // println!("{:?}", stream); // TcpStream { addr: 127.0.0.1:6379, peer: 127.0.0.1:48790, fd: 4 }
-
-                let mut buf = [0u8; 1024]; // 1mb of 0 values
-                
-                loop {
-                    match stream.read(&mut buf) {
-                        Ok(0) => break,
-                        Ok(_) => {
-                            // println!("{:?}", String::from_utf8_lossy(&mut buf[..n]));
-                                let _ = stream.write_all(b"+PONG\r\n");
-                        }
-                        Err(e) => {
-                            println!("error: {}", e);
-                            break;
+        tokio::spawn(async move {
+            let mut buf = [0u8; 1024];
+            loop {
+                match stream.read(&mut buf).await {
+                    Ok(0) => return,
+                    Ok(n) => {
+                        println!("{:?}", String::from_utf8_lossy(&buf[..n]));
+                        match stream.write_all(b"+PONG\r\n").await {
+                            Ok(_) => println!("Pong success!"),
+                            Err(e) => { println!("write error: {e}"); return; }
                         }
                     }
+                    Err(e) => { println!("read error: {e}"); return; }
                 }
             }
-            Err(e) => {
-                println!("error: {}", e);
-            }
-        }
+        });
     }
-    
 }
