@@ -38,9 +38,12 @@ async fn main() {
                             Some("SET") | Some("GET") if input_arg.len() >= 3 => {
                                 let res = inbuilt::set_get(input_arg.iter().map(|s| s.clone()).collect()).unwrap();
 
-                                let formated = format!("${}\r\n{}\r\n", res.len(), res);
+                                if res.as_str() == "OK" {
+                                    let _ = stream.write_all(b"+OK\r\n").await.unwrap();
+                                }
 
-                                let _ = stream.write_all(formated.as_bytes()).await.unwrap();
+                                let formated = format!("${}\r\n{}\r\n", res.len(), res);
+                                let _ = stream.write_all(b"+OK").await.unwrap();
                             }
                             _ => {
                                 println!("Unrecognized command");
