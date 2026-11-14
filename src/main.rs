@@ -36,13 +36,18 @@ async fn main() {
                                 let _ = stream.write_all(msg_format.as_bytes()).await.unwrap();
                             },
                             Some("SET") | Some("GET") => {
-                                let res = inbuilt::set_get(input_arg.iter().map(|s| s.clone()).collect()).unwrap();
+                                let res = inbuilt::set_get(input_arg.iter().map(|s| s.clone()).collect());
 
-                                if res.as_str() == "OK" {
-                                    let _ = stream.write_all(b"+OK\r\n").await.unwrap();
-                                } else {
-                                    let formated = format!("${}\r\n{}\r\n", res.len(), res);
-                                    let _ = stream.write_all(formated.as_bytes()).await.unwrap();
+                                match res {
+                                    Some(v) => {
+                                    if v == "OK" {
+                                        let _ = stream.write_all(b"+OK\r\n").await.unwrap();
+                                    } else {
+                                        let formated = format!("${}\r\n{}\r\n", v.len(), v);
+                                        let _ = stream.write_all(formated.as_bytes()).await.unwrap();
+                                    }
+                                    },
+                                    None => println!("(not set)"),
                                 }
                             }
                             _ => {
