@@ -13,7 +13,7 @@ pub fn set_get(set_args: Vec<String>) -> Option<String>{
             let _: Maps = Maps {
                 hash: set_hash
             };
-            let ok = String::from("Ok");
+            let ok = String::from("OK");
             Some(ok)
         },
         "GET" => {
