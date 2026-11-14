@@ -39,7 +39,7 @@ async fn main() {
                                 let res = inbuilt::set_get(input_arg.iter().map(|s| s.clone()).collect()).unwrap();
 
                                 if res.as_str() == "OK" {
-                                    let _ = stream.write_all(b"+OK\r\n").await.unwrap();
+                                    let _ = stream.write_all(b"OK").await.unwrap();
                                 }
 
                                 let formated = format!("${}\r\n{}\r\n", res.len(), res);
