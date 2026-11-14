@@ -25,6 +25,7 @@ pub fn set_get(set_args: Vec<String>) -> Option<String>{
                 }
                 _ => {
                     println!("Get key invalid!");
+                    println!("{:?}", set_hash);
                     None
                 }
             }
