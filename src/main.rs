@@ -2,6 +2,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
 mod helper;
+mod inbuilt;
 
 #[tokio::main]
 async fn main() {
@@ -34,6 +35,13 @@ async fn main() {
                                 let msg_format = format!("${}\r\n{}\r\n", msg.len(), msg);
                                 let _ = stream.write_all(msg_format.as_bytes()).await.unwrap();
                             },
+                            Some("SET") | Some("GET") if input_arg.len() >= 3 => {
+                                let res = inbuilt::set_get(input_arg.iter().map(|s| s.clone()).collect()).unwrap();
+
+                                let formated = format!("${}\r\n{}", res.len(), res);
+
+                                let _ = stream.write_all(formated.as_bytes()).await.unwrap();
+                            }
                             _ => {
                                 println!("Unrecognized command");
                             }
