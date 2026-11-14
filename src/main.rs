@@ -35,17 +35,7 @@ async fn main() {
                                 let msg_format = format!("${}\r\n{}\r\n", msg.len(), msg);
                                 let _ = stream.write_all(msg_format.as_bytes()).await.unwrap();
                             },
-                            Some("SET") if input_arg.len() >= 3 => {
-                                let res = inbuilt::set_get(input_arg.iter().map(|s| s.clone()).collect()).unwrap();
-
-                                if res.as_str() == "OK" {
-                                    let _ = stream.write_all(b"+OK\r\n").await.unwrap();
-                                } else {
-                                    let formated = format!("${}\r\n{}\r\n", res.len(), res);
-                                    let _ = stream.write_all(formated.as_bytes()).await.unwrap();
-                                }
-                            }
-                            Some("GET") if input_arg.len() >= 3 => {
+                            Some("SET") | Some("GET") => {
                                 let res = inbuilt::set_get(input_arg.iter().map(|s| s.clone()).collect()).unwrap();
 
                                 if res.as_str() == "OK" {
