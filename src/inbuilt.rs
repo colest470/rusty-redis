@@ -4,8 +4,8 @@ struct Maps {
     hash: HashMap<String, String>
 }
 
-pub fn set_get(set_args: Vec<String>) -> Option<String>{
-    let mut set_hash: HashMap<String, String> = HashMap::new();
+pub fn set_get(set_args: Vec<String>, set_hash: &mut HashMap<String, String>) -> Option<String>{
+    //let mut set_hash: HashMap<String, String> = HashMap::new();// creates a new map instead
 
     match set_args[0].as_str() {
         "SET" => {
@@ -13,19 +13,15 @@ pub fn set_get(set_args: Vec<String>) -> Option<String>{
             let _: Maps = Maps {
                 hash: set_hash
             };
-            let ok = String::from("OK");
-            Some(ok)
+            Some(String::from("OK"))
         },
         "GET" => {
-            let gotten_hash = set_hash.get(&set_args[1]);
-
-            match gotten_hash {
+            match set_hash.get(&set_args[1]) {
                 Some(n) => {
                     Some(n.clone())
                 }
                 _ => {
                     println!("Get key invalid!");
-                    println!("{:?}", set_hash);
                     None
                 }
             }
