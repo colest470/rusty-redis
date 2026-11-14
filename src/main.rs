@@ -40,10 +40,10 @@ async fn main() {
 
                                 if res.as_str() == "OK" {
                                     let _ = stream.write_all(b"OK").await.unwrap();
+                                } else {
+                                    let formated = format!("${}\r\n{}\r\n", res.len(), res);
+                                    let _ = stream.write_all(formated.as_bytes()).await.unwrap();
                                 }
-
-                                let formated = format!("${}\r\n{}\r\n", res.len(), res);
-                                let _ = stream.write_all(formated.as_bytes()).await.unwrap();
                             }
                             _ => {
                                 println!("Unrecognized command");
