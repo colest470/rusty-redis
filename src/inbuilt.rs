@@ -10,9 +10,6 @@ pub fn set_get(set_args: Vec<String>, set_hash: &mut HashMap<String, String>) ->
     match set_args[0].as_str() {
         "SET" => {
             set_hash.insert(set_args[1].clone(), set_args[2].clone());
-            let _: Maps = Maps {
-                hash: set_hash
-            };
             Some(String::from("OK"))
         },
         "GET" => {
