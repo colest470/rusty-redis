@@ -66,8 +66,8 @@ pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, S
 
             match guard.insert(key, value.to_string()) {
                 Some(_) => {
-                    Some(value);
-                }
+                    return Some(value);
+                },
                 None => println!("Error in the key value!")
             }
 
