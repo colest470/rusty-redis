@@ -62,6 +62,7 @@ pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, S
         Some(n) => {
             let mut value = n.clone().parse::<i32>().unwrap();
             value += 1;
+            println!("{value}");
 
             match guard.insert(key, value.to_string()) {
                 Some(_) => {
