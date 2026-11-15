@@ -12,23 +12,19 @@ pub fn set_get(
             let key = set_args[1].clone();
             let val = set_args[2].clone();
 
-            // Parse optional expiry: EX <seconds> or PX <milliseconds>
             let expiry_ms = match (set_args.get(3).map(String::as_str), set_args.get(4)) {
                 (Some("EX"), Some(n)) => Some(n.parse::<u64>().ok()? * 1000),
                 (Some("PX"), Some(n)) => Some(n.parse::<u64>().ok()?),
                 _ => None,
             };
 
-            // Insert immediately.
             set_hash.lock().unwrap().insert(key.clone(), val.clone());
 
-            // If TTL given, schedule removal.
             if let Some(ms) = expiry_ms {
                 let map = Arc::clone(set_hash);
                 set_timeout(
                     move || {
                         let mut guard = map.lock().unwrap();
-                        // Only remove if the value hasn't changed since.
                         if guard.get(&key).map(|v| v.as_str()) == Some(val.as_str()) {
                             guard.remove(&key);
                         }
