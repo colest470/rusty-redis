@@ -14,52 +14,60 @@ async fn main() {
         let (mut stream, _peer) = listener.accept().await.unwrap();
 
         tokio::spawn(async move {
-            let mut set_hash: Arc<Mutex<HashMap<String, String>>> = Arc::new(Mutex::new(HashMap::new()));
+            // Was: let mut set_hash: HashMap<String, String> = HashMap::new();
+            let set_hash: Arc<Mutex<HashMap<String, String>>> =
+                Arc::new(Mutex::new(HashMap::new()));
+
             let mut buf = [0u8; 1024];
             loop {
                 match stream.read(&mut buf).await {
                     Ok(0) => return,
                     Ok(n) => {
-                        println!("{:?}", String::from_utf8_lossy(&buf[..n]));
-
-                        // let input = String::from_utf8_lossy(&buf[..n]);
-
-                        let input_arg = helper::parse_command(&buf).unwrap();
+                        let input_arg = match helper::parse_command(&buf[..n]) {
+                            Some(v) => v,
+                            None => continue,
+                        };
 
                         match input_arg.first().map(String::as_str) {
                             Some("PING") => {
-                                match stream.write_all(b"+PONG\r\n").await {
-                                    Ok(_) => println!("Pong success!"),
-                                    Err(e) => { println!("write error: {e}"); return; }
+                                if let Err(e) = stream.write_all(b"+PONG\r\n").await {
+                                    println!("write error: {e}");
+                                    return;
                                 }
                             }
                             Some("ECHO") if input_arg.len() >= 2 => {
                                 let msg = &input_arg[1];
                                 let msg_format = format!("${}\r\n{}\r\n", msg.len(), msg);
-                                let _ = stream.write_all(msg_format.as_bytes()).await.unwrap();
-                            },
+                                if stream.write_all(msg_format.as_bytes()).await.is_err() {
+                                    return;
+                                }
+                            }
                             Some("SET") | Some("GET") => {
-                                let res = inbuilt::set_get(input_arg.iter().map(|s| s.clone()).collect(), &mut &set_hash);
+                                let res = inbuilt::set_get(input_arg.clone(), &set_hash);
 
                                 match res {
                                     Some(v) if v == "OK" => {
-                                        let _ = stream.write_all(b"+OK\r\n").await.unwrap();
-                                    },
-                                    Some(v) => {
-                                        let formated = format!("${}\r\n{}\r\n", v.len(), v);
-                                        let _ = stream.write_all(formated.as_bytes()).await.unwrap();
+                                        let _ = stream.write_all(b"+OK\r\n").await;
                                     }
-                                    None => println!("(not set)"),
+                                    Some(v) => {
+                                        let formatted = format!("${}\r\n{}\r\n", v.len(), v);
+                                        let _ = stream.write_all(formatted.as_bytes()).await;
+                                    }
+                                    None => {
+                                        // Redis uses nil bulk string for missing key
+                                        let _ = stream.write_all(b"$-1\r\n").await;
+                                    }
                                 }
                             }
                             _ => {
                                 println!("Unrecognized command");
                             }
                         }
-
-                        println!("{:?}", input_arg);
                     }
-                    Err(e) => { println!("read error: {e}"); return; }
+                    Err(e) => {
+                        println!("read error: {e}");
+                        return;
+                    }
                 }
             }
         });
