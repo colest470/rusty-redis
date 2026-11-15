@@ -14,9 +14,7 @@ async fn main() {
         let (mut stream, _peer) = listener.accept().await.unwrap();
 
         tokio::spawn(async move {
-            // Was: let mut set_hash: HashMap<String, String> = HashMap::new();
-            let set_hash: Arc<Mutex<HashMap<String, String>>> =
-                Arc::new(Mutex::new(HashMap::new()));
+            let set_hash: Arc<Mutex<HashMap<String, String>>> = Arc::new(Mutex::new(HashMap::new()));
 
             let mut buf = [0u8; 1024];
             loop {
@@ -57,6 +55,15 @@ async fn main() {
                                         // Redis uses nil bulk string for missing key
                                         let _ = stream.write_all(b"$-1\r\n").await;
                                     }
+                                }
+                            }
+                            Some("INCR") => {
+                                match inbuilt::increment(input_arg.clone(), &set_hash) {
+                                    Some(s) => {
+                                        let formated_string = format!(":{}\r\n", s);
+                                        let _ = stream.write_all(formated_string.as_bytes()); // s is integer and 
+                                    },
+                                    None => println!("Error finding key")// let _ = stream.write_all(b"$-1\r\n").await;
                                 }
                             }
                             _ => {

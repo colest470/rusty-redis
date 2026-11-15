@@ -54,6 +54,28 @@ pub fn set_get(
     }
 }
 
+pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> Option<i32> {
+    let key = input_args[1].clone();
+    let mut guard = set_hash.lock().unwrap();
+
+    match guard.get(&key){ // check if the mutex is locked and fetch the value
+        Some(n) => {
+            let mut value = n.clone().parse::<i32>().unwrap();
+            value += 1;
+
+            match guard.insert(key, value.to_string()) {
+                Some(_) => {
+                    Some(value);
+                }
+                None => println!("Error in the key value!")
+            }
+
+        },
+        None => println!("Error in the key value!")
+    } 
+    None
+}
+
 fn set_timeout<F>(callback: F, delay_ms: u64)
 where
     F: FnOnce() + Send + 'static,
