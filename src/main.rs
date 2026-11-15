@@ -1,6 +1,7 @@
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 mod helper;
 mod inbuilt;
@@ -13,7 +14,7 @@ async fn main() {
         let (mut stream, _peer) = listener.accept().await.unwrap();
 
         tokio::spawn(async move {
-            let mut set_hash: HashMap<String, String> = HashMap::new();
+            let mut set_hash: Arc<Mutex<HashMap<String, String>>> = Arc::new(Mutex::new(HashMap::new()));
             let mut buf = [0u8; 1024];
             loop {
                 match stream.read(&mut buf).await {
@@ -38,17 +39,16 @@ async fn main() {
                                 let _ = stream.write_all(msg_format.as_bytes()).await.unwrap();
                             },
                             Some("SET") | Some("GET") => {
-                                let res = inbuilt::set_get(input_arg.iter().map(|s| s.clone()).collect(), &mut set_hash);
+                                let res = inbuilt::set_get(input_arg.iter().map(|s| s.clone()).collect(), &mut &set_hash);
 
                                 match res {
-                                    Some(v) => {
-                                    if v == "OK" {
+                                    Some(v) if v == "OK" => {
                                         let _ = stream.write_all(b"+OK\r\n").await.unwrap();
-                                    } else {
+                                    },
+                                    Some(v) => {
                                         let formated = format!("${}\r\n{}\r\n", v.len(), v);
                                         let _ = stream.write_all(formated.as_bytes()).await.unwrap();
                                     }
-                                    },
                                     None => println!("(not set)"),
                                 }
                             }

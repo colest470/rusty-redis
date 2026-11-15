@@ -3,56 +3,50 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-pub fn set_get(
-    set_args: Vec<String>,
-    set_hash: &Arc<Mutex<HashMap<String, String>>>,
-) -> Option<String> {
+// struct Maps {
+//     hash: HashMap<String, String>
+// }
+
+pub fn set_get(set_args: Vec<String>, set_hash: &mut &Arc<Mutex<HashMap<String, String>>>) -> Option<String>{
     match set_args[0].as_str() {
         "SET" => {
-            if set_args.get(3).map(String::as_str) == Some("EX") {
-                set_timeout(
-                    {
-                        let map = Arc::clone(set_hash);
-                        let key = set_args[1].clone();
-                        let val = set_args[2].clone();
-                        move || {
-                            map.lock().unwrap().insert(key, val);
-                        }
-                    },
-                    set_args[4].parse::<u64>().unwrap() * 1000, // seconds -> ms
-                );
-            } else if set_args.get(3).map(String::as_str) == Some("PX") {
-                set_timeout(
-                    {
-                        let map = Arc::clone(set_hash);
-                        let key = set_args[1].clone();
-                        let val = set_args[2].clone();
-                        move || {
-                            map.lock().unwrap().insert(key, val);
-                        }
-                    },
-                    set_args[4].parse::<u64>().unwrap(), // already ms
-                );
-            } else {
-                set_hash
-                    .lock()
-                    .unwrap()
-                    .insert(set_args[1].clone(), set_args[2].clone());
-            }
-            Some(String::from("OK"))
-        }
+            let key = set_args[1].clone();
+            let value = set_args[2].clone();
 
+            let expiry_ms = match (set_args.get(3).map(String::as_str), set_args.get(4)) {
+                (Some("EX"), Some(n)) => Some(n.parse::<u64>().ok()? * 1000),
+                (Some("PX"), Some(n)) => Some(n.parse::<u64>().ok()?),
+                _ => None,
+            };
+
+            set_hash.lock().unwrap().insert(key.clone(), value.clone());
+
+            if let Some(ms) = expiry_ms {
+                let map = Arc::clone(set_hash);
+                set_timeout(
+                    move || {
+                        let mut guard = map.lock().unwrap();
+                        // Only remove if the value hasn't changed since.
+                        if guard.get(&key).map(|v| v.as_str()) == Some(value.as_str()) {
+                            guard.remove(&key);
+                        }
+                    },
+                    ms,
+                );
+            }
+
+            Some(String::from("OK"))
+        },
         "GET" => {
             let guard = set_hash.lock().unwrap();
             match guard.get(&set_args[1]) {
                 Some(n) => Some(n.clone()),
-                _ => {
+                None => {
                     println!("Get key invalid!");
                     None
                 }
             }
-        }
-
+        },
         _ => {
             println!("Command unrecognized");
             None
