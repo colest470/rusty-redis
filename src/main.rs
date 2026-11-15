@@ -62,7 +62,7 @@ async fn main() {
                                     Some(s) => {
                                         let formated_string = format!(":{}\r\n", s);
                                         println!("{formated_string}");
-                                        let _ = stream.write_all(formated_string.as_bytes());
+                                        let _ = stream.write_all(formated_string.as_bytes()).await;
                                     },
                                     None => println!("Error finding key")// let _ = stream.write_all(b"$-1\r\n").await;
                                 }
