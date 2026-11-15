@@ -61,7 +61,7 @@ async fn main() {
                                 match inbuilt::increment(input_arg.clone(), &set_hash) {
                                     Some(s) => {
                                         let formated_string = format!(":{}\r\n", s);
-                                        let _ = stream.write_all(formated_string.as_bytes()); // s is integer and 
+                                        let _ = stream.write_all(formated_string.as_bytes());
                                     },
                                     None => println!("Error finding key")// let _ = stream.write_all(b"$-1\r\n").await;
                                 }
