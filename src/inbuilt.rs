@@ -60,7 +60,7 @@ pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, S
 
     match guard.get(&key){
         Some(n) => {
-            let mut _value: i32 = 1; // please give a fix for this unread _value
+            let mut _value: i32 = 1;
 
             match n.clone().parse::<i32>() {
                 Ok(y) => _value = y + 1,
