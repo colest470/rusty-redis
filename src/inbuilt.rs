@@ -80,6 +80,7 @@ pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, S
         },
         None => {
             guard.insert(key, 1.to_string());
+            return Some(1)
 
             // let res_ = guard.insert(key, 1.to_string());
 
