@@ -58,18 +58,21 @@ pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, S
     let key = input_args[1].clone();
     let mut guard = set_hash.lock().unwrap();
 
-    match guard.get(&key){ // check if the mutex is locked and fetch the value
+    match guard.get(&key){
         Some(n) => {
-            let mut value = 0;
+            let mut _value: i32 = 1; // please give a fix for this unread _value
 
             match n.clone().parse::<i32>() {
-                Ok(y) => value = y + 1,
-                Err(_) => return None
+                Ok(y) => _value = y + 1,
+                Err(e) => {
+                    println!("{e}");
+                    return None
+                }
             }
 
-            match guard.insert(key, value.to_string()) {
+            match guard.insert(key, _value.to_string()) {
                 Some(_) => {
-                    return Some(value);
+                    return Some(_value);
                 },
                 None => println!("Error in the key value!")
             }
