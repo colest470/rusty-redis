@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use std::num::ParseIntError;
 
 pub fn set_get(
     set_args: Vec<String>,
@@ -55,21 +54,43 @@ pub fn set_get(
     }
 }
 
-pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> Result<i32, ParseIntError> {
+pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> Option<i32> {
     let key = input_args[1].clone();
     let mut guard = set_hash.lock().unwrap();
 
-    match guard.get(&key) {
+    match guard.get(&key){ // check if the mutex is locked and fetch the value
         Some(n) => {
-            let value = n.parse::<i32>()? + 1;
-            guard.insert(key, value.to_string());
-            Ok(value)
-        }
+            let mut value = 0;
+
+            match n.clone().parse::<i32>() {
+                Ok(y) => value = y + 1,
+                Err(_) => println!("Error parsing the value")
+            }
+
+            match guard.insert(key, value.to_string()) {
+                Some(_) => {
+                    return Some(value);
+                },
+                None => println!("Error in the key value!")
+            }
+
+        },
         None => {
-            guard.insert(key, "1".to_string());
-            Ok(1)
+            guard.insert(key, 1.to_string());
+
+            // let res_ = guard.insert(key, 1.to_string());
+
+            // println!("{:?}", res_);
+
+            // match res_ {
+            //     Some(_) => {
+            //         return Some(1);
+            //     },
+            //     None => println!("Error incrementing an invalid key")
+            // }
         }
     }
+    None
 }
 
 fn set_timeout<F>(callback: F, delay_ms: u64)

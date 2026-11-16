@@ -58,13 +58,13 @@ async fn main() {
                             }
                             Some("INCR") => {
                                 match inbuilt::increment(input_arg.clone(), &set_hash) {
-                                    Ok(s) => {
+                                    Some(s) => {
                                         let formated_string = format!(":{}\r\n", s);
                                         let _ = stream.write_all(formated_string.as_bytes()).await;
                                     },
-                                    Err(_) => {
+                                    None => {
                                         let res = String::from("ERR value is not an integer or out of range");
-                                        let _ = stream.write_all(format!("${}\r\n{}\r\n",res.len(), res).as_bytes());
+                                        let _ = stream.write_all(format!("${}\r\n{}\r\n",res.len(), res).as_bytes()).await;
                                     }
                                 }
                             }
