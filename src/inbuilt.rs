@@ -75,7 +75,7 @@ pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, S
             match guard.insert(key, String::from("1")) {
                 Some(_) => {
                     return Some(1);
-                }
+                },
                 None => println!("Error incrementing an invalid key")
             }
         }
