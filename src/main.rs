@@ -1,6 +1,7 @@
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use std::collections::HashMap;
+use std::num::ParseIntError;
 use std::sync::{Arc, Mutex};
 
 mod helper;
@@ -63,8 +64,8 @@ async fn main() {
                                         let _ = stream.write_all(formated_string.as_bytes()).await;
                                     },
                                     None => {
-                                        let res = String::from("ERR value is not an integer or out of range");
-                                        let _ = stream.write_all(format!("${}\r\n{}\r\n",res.len(), res).as_bytes()).await;
+                                        let err = b"-ERR value is not an integer or out of range\r\n";
+                                        let _ = stream.write_all(err).await;
                                     }
                                 }
                             }
