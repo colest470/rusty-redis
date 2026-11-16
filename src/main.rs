@@ -52,7 +52,6 @@ async fn main() {
                                         let _ = stream.write_all(formatted.as_bytes()).await;
                                     }
                                     None => {
-                                        // Redis uses nil bulk string for missing key
                                         let _ = stream.write_all(b"$-1\r\n").await;
                                     }
                                 }
@@ -61,7 +60,6 @@ async fn main() {
                                 match inbuilt::increment(input_arg.clone(), &set_hash) {
                                     Some(s) => {
                                         let formated_string = format!(":{}\r\n", s);
-                                        println!("{formated_string}");
                                         let _ = stream.write_all(formated_string.as_bytes()).await;
                                     },
                                     None => println!("Error finding key")// let _ = stream.write_all(b"$-1\r\n").await;
