@@ -72,16 +72,20 @@ pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, S
 
         },
         None => {
-            let res_ = guard.insert(key, String::from("1"));
+            guard.insert(key, 1.to_string());
 
-            println!("{:?}", res_);
+            return Some(1);
 
-            match res_ {
-                Some(_) => {
-                    return Some(1);
-                },
-                None => println!("Error incrementing an invalid key")
-            }
+            // let res_ = guard.insert(key, 1.to_string());
+
+            // println!("{:?}", res_);
+
+            // match res_ {
+            //     Some(_) => {
+            //         return Some(1);
+            //     },
+            //     None => println!("Error incrementing an invalid key")
+            // }
         }
     }
     None
