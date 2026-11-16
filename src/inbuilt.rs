@@ -64,7 +64,7 @@ pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, S
 
             match n.clone().parse::<i32>() {
                 Ok(y) => value = y + 1,
-                Err(_) => println!("Error parsing the value")
+                Err(_) => return None
             }
 
             match guard.insert(key, value.to_string()) {
