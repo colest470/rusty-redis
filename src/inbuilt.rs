@@ -106,3 +106,34 @@ where
         callback();
     });
 }
+
+pub fn multi(input_args: Vec<String>, qued_commands: &mut Vec<String>) -> Option<String> {
+    qued_commands.push(input_args.join(" "));
+
+    return Some(String::from("OK"))
+}
+
+pub fn exec(qued_commands: &mut Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> String {
+    if qued_commands.is_empty() {
+        return "*0\r\n".to_string();
+    }
+
+    let mut out = format!("*{}\r\n", qued_commands.len());
+
+    for line in qued_commands.drain(..) {
+        let args: Vec<String> = line.split_whitespace().map(String::from).collect();
+
+        let res: Option<String> = match args.first().map(String::as_str) {
+            Some("SET") | Some("GET") => return set_get(args, set_hash).unwrap(),
+            Some("INCR") => return increment(args, set_hash).unwrap().to_string(),
+            _ => None,
+        };
+
+        match res {
+            Some(v) if v == "OK" => out.push_str("+OK\r\n"),
+            Some(v) => out.push_str(&format!("${}\r\n{}\r\n", v.len(), v)),
+            None => out.push_str("$-1\r\n"),
+        }
+    }
+    out
+}

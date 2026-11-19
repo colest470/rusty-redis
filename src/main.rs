@@ -16,6 +16,10 @@ async fn main() {
         tokio::spawn(async move {
             let set_hash: Arc<Mutex<HashMap<String, String>>> = Arc::new(Mutex::new(HashMap::new()));
 
+            let mut is_multi: bool = false;
+
+            let mut qued_commands: Vec<String> = Vec::new();
+
             let mut buf = [0u8; 1024];
             loop {
                 match stream.read(&mut buf).await {
@@ -55,7 +59,7 @@ async fn main() {
                                         let _ = stream.write_all(b"$-1\r\n").await;
                                     }
                                 }
-                            }
+                            },
                             Some("INCR") => {
                                 match inbuilt::increment(input_arg.clone(), &set_hash) {
                                     Some(s) => {
@@ -67,9 +71,57 @@ async fn main() {
                                         let _ = stream.write_all(err).await;
                                     }
                                 }
-                            }
+                            },
+
+                            // FIX 2: The guard was inverted. `MULTI` should fire when
+                            // we are NOT already in multi mode (and error if we are).
+                            Some("MULTI") if !is_multi => {
+                                match inbuilt::multi(input_arg.clone(), &mut qued_commands) {
+                                    Some(_) => {
+                                        is_multi = true;
+                                        let _ = stream.write_all(b"+OK\r\n").await;
+                                    },
+                                    None => {
+                                        let _ = stream.write_all(b"$-1\r\n").await;
+                                    }
+                                }
+                            },
+                            Some("MULTI") => {
+                                // Already in multi mode → Redis rejects nested MULTI.
+                                let _ = stream
+                                    .write_all(b"-ERR MULTI calls can not be nested\r\n")
+                                    .await;
+                            },
+
+                            // FIX 3: `EXEC` had an incomplete body (dangling `is_multi.`).
+                            // Call `exec`, send the reply, then exit multi mode.
+                            Some("EXEC") => {
+                                if !is_multi {
+                                    let _ = stream
+                                        .write_all(b"-ERR EXEC without MULTI\r\n")
+                                        .await;
+                                } else {
+                                    is_multi = false;
+                                    let reply = inbuilt::exec(
+                                        &mut qued_commands,
+                                        &set_hash,
+                                    );
+                                    if stream.write_all(reply.as_bytes()).await.is_err() {
+                                        return;
+                                    }
+                                }
+                            },
+
                             _ => {
-                                println!("Unrecognized command");
+                                // FIX 4: Previously just logged server-side, which left
+                                // the client hanging waiting for a reply. Send an error.
+                                let msg = format!(
+                                    "-ERR unknown command '{}'\r\n",
+                                    input_arg.first().map(String::as_str).unwrap_or("")
+                                );
+                                if stream.write_all(msg.as_bytes()).await.is_err() {
+                                    return;
+                                }
                             }
                         }
                     }
