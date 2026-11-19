@@ -72,9 +72,6 @@ async fn main() {
                                     }
                                 }
                             },
-
-                            // FIX 2: The guard was inverted. `MULTI` should fire when
-                            // we are NOT already in multi mode (and error if we are).
                             Some("MULTI") if !is_multi => {
                                 match inbuilt::multi(input_arg.clone(), &mut qued_commands) {
                                     Some(_) => {
