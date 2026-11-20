@@ -75,7 +75,15 @@ async fn main() {
                             Some("MULTI") if is_multi => {
                                 let _ = stream.write_all(b"-ERR MULTI calls can not be nested\r\n").await;
                             },
-                            _ if Some("MULTI") ==  input_arg.first().map(String::as_str) || is_multi => { // i want or statement
+                            Some("EXEC") => {
+                                is_multi = false;
+                                let reply = inbuilt::exec(&mut qued_commands, &set_hash);
+
+                                println!("{reply}");
+
+                                let _ = stream.write_all(reply.as_bytes()).await;
+                            },
+                            _ if Some("MULTI") == input_arg.first().map(String::as_str) || is_multi => { // i want or statement
                                 match inbuilt::multi(input_arg.clone(), &mut qued_commands) {
                                     Some(_) => {
                                         is_multi = true;
@@ -86,15 +94,6 @@ async fn main() {
                                     }
                                 }
                             },
-                            Some("EXEC") => {
-                                is_multi = false;
-                                let reply = inbuilt::exec(&mut qued_commands, &set_hash);
-
-                                println!("{reply}");
-
-                                let _ = stream.write_all(reply.as_bytes()).await;
-                            },
-
                             _ => {
                                 let msg = format!(
                                     "-ERR unknown command '{}'\r\n",
