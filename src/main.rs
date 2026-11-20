@@ -72,7 +72,10 @@ async fn main() {
                                     }
                                 }
                             },
-                            Some("MULTI") if !is_multi => {
+                            Some("MULTI") if is_multi => {
+                                let _ = stream.write_all(b"-ERR MULTI calls can not be nested\r\n").await;
+                            },
+                            _ if Some("MULTI") ==  input_arg.first().map(String::as_str) || is_multi => { // i want or statement
                                 match inbuilt::multi(input_arg.clone(), &mut qued_commands) {
                                     Some(_) => {
                                         is_multi = true;
@@ -82,9 +85,6 @@ async fn main() {
                                         let _ = stream.write_all(b"$-1\r\n").await;
                                     }
                                 }
-                            },
-                            Some("MULTI") => {
-                                let _ = stream.write_all(b"-ERR MULTI calls can not be nested\r\n").await;
                             },
                             Some("EXEC") => {
                                 is_multi = false;
