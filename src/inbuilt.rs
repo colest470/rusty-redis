@@ -115,6 +115,7 @@ pub fn multi(input_args: Vec<String>, qued_commands: &mut Vec<String>) -> Option
 
 pub fn exec(qued_commands: &mut Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> String {
     if qued_commands.is_empty() {
+        println!("Empty queue");
         return "*0\r\n".to_string();
     }
 
