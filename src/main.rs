@@ -87,18 +87,13 @@ async fn main() {
                                 let _ = stream.write_all(b"-ERR MULTI calls can not be nested\r\n").await;
                             },
                             Some("EXEC") => {
-                                if !is_multi {
-                                    let _ = stream
-                                        .write_all(b"-ERR EXEC without MULTI\r\n").await;
-                                } else {
-                                    is_multi = false;
-                                    let reply = inbuilt::exec(
-                                        &mut qued_commands,
-                                        &set_hash,
-                                    );
-                                    if stream.write_all(reply.as_bytes()).await.is_err() {
-                                        return;
-                                    }
+                                is_multi = false;
+                                let reply = inbuilt::exec(&mut qued_commands, &set_hash);
+
+                                print!("{reply}");
+
+                                if stream.write_all(reply.as_bytes()).await.is_err() {
+                                    return;
                                 }
                             },
 
