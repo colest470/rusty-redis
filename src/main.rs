@@ -90,11 +90,7 @@ async fn main() {
                                 is_multi = false;
                                 let reply = inbuilt::exec(&mut qued_commands, &set_hash);
 
-                                print!("{reply}");
-
-                                if stream.write_all(reply.as_bytes()).await.is_err() {
-                                    return;
-                                }
+                                let _ = stream.write_all(reply.as_bytes()).await;
                             },
 
                             _ => {
