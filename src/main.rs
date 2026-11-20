@@ -84,19 +84,12 @@ async fn main() {
                                 }
                             },
                             Some("MULTI") => {
-                                // Already in multi mode → Redis rejects nested MULTI.
-                                let _ = stream
-                                    .write_all(b"-ERR MULTI calls can not be nested\r\n")
-                                    .await;
+                                let _ = stream.write_all(b"-ERR MULTI calls can not be nested\r\n").await;
                             },
-
-                            // FIX 3: `EXEC` had an incomplete body (dangling `is_multi.`).
-                            // Call `exec`, send the reply, then exit multi mode.
                             Some("EXEC") => {
                                 if !is_multi {
                                     let _ = stream
-                                        .write_all(b"-ERR EXEC without MULTI\r\n")
-                                        .await;
+                                        .write_all(b"-ERR EXEC without MULTI\r\n").await;
                                 } else {
                                     is_multi = false;
                                     let reply = inbuilt::exec(
@@ -110,8 +103,6 @@ async fn main() {
                             },
 
                             _ => {
-                                // FIX 4: Previously just logged server-side, which left
-                                // the client hanging waiting for a reply. Send an error.
                                 let msg = format!(
                                     "-ERR unknown command '{}'\r\n",
                                     input_arg.first().map(String::as_str).unwrap_or("")
