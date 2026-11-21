@@ -10,14 +10,17 @@ mod inbuilt;
 async fn main() {
     let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
 
+    let set_hash: Arc<Mutex<HashMap<String, String>>> = Arc::new(Mutex::new(HashMap::new()));
+    let is_multi: Arc<Mutex<HashMap<u16, bool>>> = Arc::new(Mutex::new(HashMap::new()));
+
     loop {
         let (mut stream, _peer) = listener.accept().await.unwrap();
+        let set_hash = Arc::clone(&set_hash);
+        let is_multi = Arc::clone(&is_multi);
+
+        is_multi.lock().unwrap().insert(_peer.port(), false);
 
         tokio::spawn(async move {
-            let set_hash: Arc<Mutex<HashMap<String, String>>> = Arc::new(Mutex::new(HashMap::new()));
-
-            let mut is_multi: bool = false;
-
             let mut qued_commands: Vec<String> = Vec::new();
 
             let mut buf = [0u8; 1024];
@@ -29,6 +32,14 @@ async fn main() {
                             Some(v) => v,
                             None => continue,
                         };
+
+                        // is_multi.lock().unwrap().get(&_peer.port()).copied().unwrap();
+
+                        if is_multi.lock().unwrap().get(&_peer.port()).copied().unwrap() {
+                            let result_string = inbuilt::multi(input_arg.clone(), &mut qued_commands);
+
+                            println!("{result_string}");
+                        }
 
                         match input_arg.first().map(String::as_str) {
                             Some("PING") => {
@@ -72,27 +83,35 @@ async fn main() {
                                     }
                                 }
                             },
-                            Some("MULTI") if is_multi => {
+                            Some("MULTI") if is_multi.lock().unwrap().get(&_peer.port()).copied().unwrap_or(false) => {
                                 let _ = stream.write_all(b"-ERR MULTI calls can not be nested\r\n").await;
                             },
+                            Some("MULTI") => {
+                                // match inbuilt::multi(input_arg.clone(), &mut qued_commands) {
+                                //     Some(_) => {
+                                //         is_multi = true;
+                                //         let _ = stream.write_all(b"+OK\r\n").await;
+                                //     },
+                                //     None => {
+                                //         let _ = stream.write_all(b"$-1\r\n").await;
+                                //     }
+                                // }
+
+                                is_multi.lock().unwrap().insert(_peer.port(), true);
+
+                                println!("{_peer} is set to true");
+
+                                let ret = inbuilt::multi(input_arg.clone(), &mut qued_commands);
+
+                                let _ = stream.write_all(format!("+{}\r\n", ret).as_bytes()).await;
+                            },
                             Some("EXEC") => {
-                                is_multi = false;
+                                is_multi.lock().unwrap().insert(_peer.port(), false);
                                 let reply = inbuilt::exec(&mut qued_commands, &set_hash);
 
                                 println!("{reply}");
 
                                 let _ = stream.write_all(reply.as_bytes()).await;
-                            },
-                            _ if Some("MULTI") == input_arg.first().map(String::as_str) || is_multi => { // i want or statement
-                                match inbuilt::multi(input_arg.clone(), &mut qued_commands) {
-                                    Some(_) => {
-                                        is_multi = true;
-                                        let _ = stream.write_all(b"+OK\r\n").await;
-                                    },
-                                    None => {
-                                        let _ = stream.write_all(b"$-1\r\n").await;
-                                    }
-                                }
                             },
                             _ => {
                                 let msg = format!(
