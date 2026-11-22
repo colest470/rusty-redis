@@ -42,12 +42,9 @@ async fn main() {
                             .map(String::as_str)
                             .unwrap_or("");
 
-                        // Handle MULTI
                         if command == "MULTI" {
                             if is_multi {
-                                let _ = stream.write_all(
-                                    b"-ERR MULTI calls can not be nested\r\n"
-                                ).await;
+                                let _ = stream.write_all(b"-ERR MULTI calls can not be nested\r\n").await;
                             } else {
                                 is_multi = true;
                                 qued_commands.clear();
@@ -58,13 +55,9 @@ async fn main() {
                             continue;
                         }
 
-                        // Handle EXEC
                         if command == "EXEC" {
                             if !is_multi {
-                                let _ = stream.write_all(
-                                    b"-ERR EXEC without MULTI\r\n"
-                                ).await;
-
+                                let _ = stream.write_all(b"-ERR EXEC without MULTI\r\n").await;
                                 continue;
                             }
 
@@ -78,11 +71,9 @@ async fn main() {
                             if stream.write_all(reply.as_bytes()).await.is_err() {
                                 return;
                             }
-
                             continue;
                         }
 
-                        // Handle DISCARD
                         if command == "DISCARD" {
                             if !is_multi {
                                 let _ = stream.write_all(
@@ -98,7 +89,6 @@ async fn main() {
                             continue;
                         }
 
-                        // Queue commands during MULTI
                         if is_multi {
                             let result = inbuilt::multi(
                                 input_arg.clone(),
@@ -116,7 +106,6 @@ async fn main() {
                             continue;
                         }
 
-                        // Normal command execution
                         match command {
                             "PING" => {
                                 if stream.write_all(b"+PONG\r\n").await.is_err() {

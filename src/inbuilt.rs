@@ -110,11 +110,7 @@ pub fn multi(input_args: Vec<String>, qued_commands: &mut Vec<String>) -> String
 }
 
 
-pub fn exec(
-    qued_commands: &mut Vec<String>,
-    set_hash: &Arc<Mutex<HashMap<String, String>>>
-) -> String {
-
+pub fn exec(qued_commands: &mut Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> String {
     if qued_commands.is_empty() {
         return "*0\r\n".to_string();
     }
@@ -122,10 +118,7 @@ pub fn exec(
     let mut out = format!("*{}\r\n", qued_commands.len());
 
     for line in qued_commands.drain(..) {
-        let args: Vec<String> = line
-            .split_whitespace()
-            .map(String::from)
-            .collect();
+        let args: Vec<String> = line.split_whitespace().map(String::from).collect();
 
         let res = match args.first().map(String::as_str) {
             Some("SET") | Some("GET") => {
@@ -133,10 +126,8 @@ pub fn exec(
             }
 
             Some("INCR") => {
-                increment(args, set_hash)
-                    .map(|v| v.to_string())
+                increment(args, set_hash).map(|v| v.to_string())
             }
-
             _ => None,
         };
 
