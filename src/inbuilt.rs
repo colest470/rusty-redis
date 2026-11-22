@@ -109,8 +109,6 @@ pub fn multi(input_args: Vec<String>, qued_commands: &mut Vec<String>) -> String
     return String::from("OK");
 }
 
-
-
 pub fn exec(
     qued_commands: &mut Vec<String>,
     set_hash: &Arc<Mutex<HashMap<String, String>>>
