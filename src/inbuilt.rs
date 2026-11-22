@@ -146,5 +146,7 @@ pub fn exec(qued_commands: &mut Vec<String>, set_hash: &Arc<Mutex<HashMap<String
         }
     }
 
+    println!("{out}");
+
     out
 }
