@@ -3,10 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-pub fn set_get(
-    set_args: Vec<String>,
-    set_hash: &Arc<Mutex<HashMap<String, String>>>,
-) -> Option<String> {
+pub fn set_get(set_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>,) -> Option<String> {
     match set_args[0].as_str() {
         "SET" => {
             let key = set_args[1].clone();
@@ -46,7 +43,6 @@ pub fn set_get(
                 }
             }
         }
-
         _ => {
             println!("Command unrecognized");
             None
@@ -113,28 +109,51 @@ pub fn multi(input_args: Vec<String>, qued_commands: &mut Vec<String>) -> String
     return String::from("OK");
 }
 
-pub fn exec(qued_commands: &mut Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> String {
+
+pub fn exec(
+    qued_commands: &mut Vec<String>,
+    set_hash: &Arc<Mutex<HashMap<String, String>>>
+) -> String {
+
     if qued_commands.is_empty() {
-        println!("Empty queue");
         return "*0\r\n".to_string();
     }
 
     let mut out = format!("*{}\r\n", qued_commands.len());
 
     for line in qued_commands.drain(..) {
-        let args: Vec<String> = line.split_whitespace().map(String::from).collect();
+        let args: Vec<String> = line
+            .split_whitespace()
+            .map(String::from)
+            .collect();
 
-        let res: Option<String> = match args.first().map(String::as_str) {
-            Some("SET") | Some("GET") => return set_get(args, set_hash).unwrap(),
-            Some("INCR") => return increment(args, set_hash).unwrap().to_string(),
+        let res = match args.first().map(String::as_str) {
+            Some("SET") | Some("GET") => {
+                set_get(args, set_hash)
+            }
+
+            Some("INCR") => {
+                increment(args, set_hash)
+                    .map(|v| v.to_string())
+            }
+
             _ => None,
         };
 
         match res {
-            Some(v) if v == "OK" => out.push_str("+OK\r\n"),
-            Some(v) => out.push_str(&format!("${}\r\n{}\r\n", v.len(), v)),
-            None => out.push_str("$-1\r\n"),
+            Some(v) if v == "OK" => {
+                out.push_str("+OK\r\n");
+            }
+
+            Some(v) => {
+                out.push_str(&format!("${}\r\n{}\r\n", v.len(), v));
+            }
+
+            None => {
+                out.push_str("$-1\r\n");
+            }
         }
     }
+
     out
 }
