@@ -63,10 +63,7 @@ async fn main() {
 
                             is_multi = false;
 
-                            let reply = inbuilt::exec(
-                                &mut qued_commands,
-                                &set_hash
-                            );
+                            let reply = inbuilt::exec(&mut qued_commands, &set_hash);
 
                             if stream.write_all(reply.as_bytes()).await.is_err() {
                                 return;
@@ -116,11 +113,7 @@ async fn main() {
                             "ECHO" if input_arg.len() >= 2 => {
                                 let msg = &input_arg[1];
 
-                                let response = format!(
-                                    "${}\r\n{}\r\n",
-                                    msg.len(),
-                                    msg
-                                );
+                                let response = format!("${}\r\n{}\r\n", msg.len(),msg);
 
                                 if stream.write_all(response.as_bytes()).await.is_err() {
                                     return;
