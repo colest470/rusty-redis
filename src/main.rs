@@ -65,12 +65,7 @@ async fn main() {
 
                             let reply = inbuilt::exec(&mut qued_commands, &set_hash);
 
-                            let bytes: Vec<u8> = reply
-                                .iter()
-                                .flat_map(|f| f.as_bytes().to_vec())
-                                .collect();
-
-                            let _ = stream.write_all(&bytes).await;
+                            let _ = stream.write_all(reply.as_bytes()).await;
                             continue;
                         }
 
