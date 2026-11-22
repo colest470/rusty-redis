@@ -110,9 +110,11 @@ pub fn multi(input_args: Vec<String>, qued_commands: &mut Vec<String>) -> String
 }
 
 
-pub fn exec(qued_commands: &mut Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> String {
+pub fn exec(qued_commands: &mut Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> Vec<String> {
+    let mut out_arr: Vec<String> = Vec::new();
+
     if qued_commands.is_empty() {
-        return "*0\r\n".to_string();
+        out_arr.push("*0\r\n".to_string());
     }
 
     let mut out = format!("*{}\r\n", qued_commands.len());
@@ -134,19 +136,21 @@ pub fn exec(qued_commands: &mut Vec<String>, set_hash: &Arc<Mutex<HashMap<String
         match res {
             Some(v) if v == "OK" => {
                 out.push_str("+OK\r\n");
+                out_arr.push(String::from("+OK\r\n"));
             }
 
             Some(v) => {
                 out.push_str(&format!("${}\r\n{}\r\n", v.len(), v));
+                out_arr.push(String::from(&format!("${}\r\n{}\r\n", v.len(), v)));
             }
 
             None => {
                 out.push_str("$-1\r\n");
+                out_arr.push(String::from("$-1\r\n"));
             }
         }
     }
 
-    println!("{out}");
 
-    out
+    out_arr
 }
