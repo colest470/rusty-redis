@@ -159,6 +159,6 @@ pub fn type_checker(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String
             Err(_) => return String::from("string")
         }
         },
-        None => return String::from("None")
+        None => return String::from("none")
     }
 }

@@ -62,7 +62,7 @@ async fn main() {
 
                             is_multi = false;
 
-                            let reply = inbuilt::exec(&mut qued_commands, &set_hash);
+                            let _reply = inbuilt::exec(&mut qued_commands, &set_hash);
 
                              
                             continue;
