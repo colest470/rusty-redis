@@ -64,7 +64,7 @@ async fn main() {
 
                             let reply = inbuilt::exec(&mut qued_commands, &set_hash);
 
-                            let _ = stream.write_all(format!("+{}\r\n", reply).as_bytes()).await;
+                            let _ = stream.write_all( reply.as_bytes()).await;
                              
                             continue;
                         }
