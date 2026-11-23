@@ -109,11 +109,7 @@ pub fn multi(input_args: Vec<String>, qued_commands: &mut Vec<String>) -> String
     return String::from("OK");
 }
 
-pub fn exec(
-    qued_commands: &mut Vec<String>,
-    set_hash: &Arc<Mutex<HashMap<String, String>>>
-) -> String {
-
+pub fn exec(qued_commands: &mut Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> String {
     let mut out = format!("*{}\r\n", qued_commands.len());
 
     for line in qued_commands.drain(..) {
@@ -151,4 +147,18 @@ pub fn exec(
     }
 
     out
+}
+
+pub fn type_checker(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> String {
+    match set_hash.lock().unwrap().get(input_args.last().unwrap()) {
+        Some(s) => {
+        match s.parse::<i32>(){
+            Ok(_) => {
+                return String::from("integer");
+            },
+            Err(_) => return String::from("string")
+        }
+        },
+        None => return String::from("None")
+    }
 }

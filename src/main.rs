@@ -30,7 +30,6 @@ async fn main() {
             loop {
                 match stream.read(&mut buf).await {
                     Ok(0) => return,
-
                     Ok(n) => {
                         let input_arg = match helper::parse_command(&buf[..n]) {
                             Some(v) => v,
@@ -65,7 +64,7 @@ async fn main() {
 
                             let reply = inbuilt::exec(&mut qued_commands, &set_hash);
 
-                            let _ = stream.write_all(reply.as_bytes()).await;
+                             
                             continue;
                         }
 
@@ -168,7 +167,11 @@ async fn main() {
                                     }
                                 }
                             }
+                            "TYPE" => {
+                                let ret_string = inbuilt::type_checker(input_arg.clone(), &set_hash);
 
+                               let _ = stream.write_all(format!("+{}\r\n", ret_string).as_bytes()).await;
+                            }
                             _ => {
                                 let response = format!(
                                     "-ERR unknown command '{}'\r\n",
