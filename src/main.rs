@@ -171,7 +171,15 @@ async fn main() {
                                let _ = stream.write_all(format!("+{}\r\n", ret_string).as_bytes()).await;
                             }
                             "XADD" => {
-                                let _xadd_string = inbuilt::xadd(input_arg.clone(), &set_hash, &xadd_ids);
+                                match inbuilt::xadd(input_arg.clone(), &set_hash, &xadd_ids) {
+                                    Some(xadd_string) => {
+                                        let bulk = format!("${}\r\n{}\r\n", xadd_string.len(), xadd_string);
+                                        let _ = stream.write_all(bulk.as_bytes()).await;
+                                    },
+                                    None => {
+                                        let _ = stream.write_all(b"-ERR value is not an integer or out of range\r\n").await;
+                                    }
+                                }
                             },
                             _ => {
                                 let response = format!(
