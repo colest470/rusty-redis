@@ -9,17 +9,16 @@ mod inbuilt;
 
 #[tokio::main]
 async fn main() {
-    let listener = TcpListener::bind("127.0.0.1:6379")
-        .await
-        .unwrap();
+    let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
 
-    let set_hash: Arc<Mutex<HashMap<String, String>>> =
-        Arc::new(Mutex::new(HashMap::new()));
+    let set_hash: Arc<Mutex<HashMap<String, String>>> = Arc::new(Mutex::new(HashMap::new()));
+    let xadd_ids: Arc<Mutex<HashMap<String, Vec<String>>>> = Arc::new(Mutex::new(HashMap::new()));
 
     loop {
         let (mut stream, peer) = listener.accept().await.unwrap();
 
         let set_hash = Arc::clone(&set_hash);
+        let xadd_ids = Arc::clone(&xadd_ids);
 
         tokio::spawn(async move {
             let mut is_multi = false;
@@ -71,9 +70,7 @@ async fn main() {
 
                         if command == "DISCARD" {
                             if !is_multi {
-                                let _ = stream.write_all(
-                                    b"-ERR DISCARD without MULTI\r\n"
-                                ).await;
+                                let _ = stream.write_all(b"-ERR DISCARD without MULTI\r\n").await;
                             } else {
                                 is_multi = false;
                                 qued_commands.clear();
@@ -169,10 +166,13 @@ async fn main() {
                                 }
                             }
                             "TYPE" => {
-                                let ret_string = inbuilt::type_checker(input_arg.clone(), &set_hash);
+                                let ret_string = inbuilt::type_checker(input_arg.clone(), &set_hash, &xadd_ids);
 
                                let _ = stream.write_all(format!("+{}\r\n", ret_string).as_bytes()).await;
                             }
+                            "XADD" => {
+                                let _xadd_string = inbuilt::xadd(input_arg.clone(), &set_hash, &xadd_ids);
+                            },
                             _ => {
                                 let response = format!(
                                     "-ERR unknown command '{}'\r\n",

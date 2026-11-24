@@ -149,7 +149,17 @@ pub fn exec(qued_commands: &mut Vec<String>, set_hash: &Arc<Mutex<HashMap<String
     out
 }
 
-pub fn type_checker(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> String {
+pub fn type_checker(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>, xadd_ids: &Arc<Mutex<HashMap<String, Vec<String>>>>) -> String {
+    match xadd_ids.lock().unwrap().get(input_args.last().unwrap().as_str()) {
+        Some(v) => {
+            println!("{}", v.first().unwrap());
+            return String::from("stream");
+        }
+        None => {
+            println!("Stream not found");
+        }
+    }
+
     match set_hash.lock().unwrap().get(input_args.last().unwrap()) {
         Some(s) => {
         match s.parse::<i32>(){
@@ -160,5 +170,52 @@ pub fn type_checker(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String
         }
         },
         None => return String::from("none")
+    }
+}
+
+pub fn xadd(input_args: Vec<String>, set_args: &Arc<Mutex<HashMap<String, String>>>, xadd_ids: &Arc<Mutex<HashMap<String, Vec<String>>>>) -> Option<String> {
+    if input_args.len() % 2 == 0 {
+        return None;
+    }
+
+    let mut ids = Vec::new();
+    let mut map = xadd_ids.lock().unwrap();
+    let mut set_arr = Vec::new();
+
+    for (index, _) in input_args.iter().enumerate(){
+        if index == 0 {
+            continue;
+        } else if index == 1 {
+            ids.push(input_args[index+1].clone());
+            continue;
+        } else if index % 2 == 1{
+            ids.push(input_args[index].clone());
+            set_arr.push(input_args[index].clone());
+        } else {
+            set_arr.push(input_args[index].clone());
+        }
+    }
+
+
+
+    set_arr[0] = String::from("SET");
+
+    println!("{:?}: set_arr to be sent to set and get fn", set_arr);
+    println!("{:?}: ids to be set in the array and starts with the hash id", ids);
+
+    match set_get(set_arr.clone(), &set_args) {
+        Some(_) => {
+            match map.insert(input_args[1].clone(), ids) {
+                Some(_v) => {
+                    return Some(input_args[2].clone());
+                },
+                None => {
+                    return None;
+                }
+            }
+        }
+        None => {
+            return None;
+        }
     }
 }
