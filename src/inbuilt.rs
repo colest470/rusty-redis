@@ -4,50 +4,97 @@ use std::thread;
 use std::time::Duration;
 
 pub fn set_get(set_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>,) -> Option<String> {
-    match set_args[0].as_str() {
+    let cmd = set_args.get(0)?.to_uppercase();
+
+    match cmd.as_str() {
         "SET" => {
-            let key = set_args[1].clone();
-            let val = set_args[2].clone();
+            let rest = &set_args[1..];
 
-            let expiry_ms = match (set_args.get(3).map(String::as_str), set_args.get(4)) {
-                (Some("EX"), Some(n)) => Some(n.parse::<u64>().ok()? * 1000),
-                (Some("PX"), Some(n)) => Some(n.parse::<u64>().ok()?),
-                _ => None,
-            };
+            let mut assignments: Vec<(String, String, Option<u64>)> = Vec::new();
+            let mut i = 0;
 
-            set_hash.lock().unwrap().insert(key.clone(), val.clone());
+            while i < rest.len() {
+                let key = match rest.get(i) {
+                    Some(k) if !is_flag(k) => k.clone(),
+                    Some(k) => {
+                        eprintln!("Expected key, found flag '{}'", k);
+                        return None;
+                    }
+                    None => break,
+                };
+                let val = match rest.get(i + 1) {
+                    Some(v) if !is_flag(v) => v.clone(),
+                    _ => {
+                        eprintln!("Missing value for key '{}'", key);
+                        return None;
+                    }
+                };
+                i += 2;
 
-            if let Some(ms) = expiry_ms {
-                let map = Arc::clone(set_hash);
-                set_timeout(
-                    move || {
-                        let mut guard = map.lock().unwrap();
-                        if guard.get(&key).map(|v| v.as_str()) == Some(val.as_str()) {
-                            guard.remove(&key);
-                        }
-                    },
-                    ms,
-                );
+                let mut expiry_ms = None;
+                if let Some(flag) = rest.get(i) {
+                    let flag_upper = flag.to_uppercase();
+                    if flag_upper == "EX" || flag_upper == "PX" {
+                        let n = rest.get(i + 1)?.parse::<u64>().ok()?;
+                        expiry_ms = Some(if flag_upper == "EX" { n * 1000 } else { n });
+                        i += 2;
+                    }
+                }
+
+                assignments.push((key, val, expiry_ms));
+            }
+
+            if assignments.is_empty() {
+                eprintln!("SET requires at least one key-value pair");
+                return None;
+            }
+
+            {
+                let mut guard = set_hash.lock().unwrap();
+                for (k, v, _) in &assignments {
+                    guard.insert(k.clone(), v.clone());
+                }
+            }
+
+            for (key, val, expiry_ms) in assignments {
+                if let Some(ms) = expiry_ms {
+                    let map = Arc::clone(set_hash);
+                    set_timeout(
+                        move || {
+                            let mut guard = map.lock().unwrap();
+                            if guard.get(&key).map(|v| v.as_str()) == Some(val.as_str()) {
+                                guard.remove(&key);
+                            }
+                        },
+                        ms,
+                    );
+                }
             }
 
             Some(String::from("OK"))
         }
 
         "GET" => {
+            let key = set_args.get(1)?;
             let guard = set_hash.lock().unwrap();
-            match guard.get(&set_args[1]) {
-                Some(n) => Some(n.clone()),
+            match guard.get(key) {
+                Some(v) => Some(v.clone()),
                 None => {
                     println!("Get key invalid!");
                     None
                 }
             }
         }
+
         _ => {
             println!("Command unrecognized");
             None
         }
     }
+}
+
+fn is_flag(token: &str) -> bool {
+    matches!(token.to_uppercase().as_str(), "EX" | "PX")
 }
 
 pub fn increment(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String, String>>>) -> Option<i32> {
@@ -173,7 +220,7 @@ pub fn type_checker(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String
     }
 }
 
-pub fn xadd(input_args: Vec<String>, set_args: &Arc<Mutex<HashMap<String, String>>>, xadd_ids: &Arc<Mutex<HashMap<String, Vec<String>>>>) -> Option<String> {
+pub fn xadd(input_args: Vec<String>, _set_args: &Arc<Mutex<HashMap<String, String>>>, xadd_ids: &Arc<Mutex<HashMap<String, Vec<String>>>>) -> Option<String> {
     if input_args.len() % 2 == 0 {
         return None;
     }
@@ -196,26 +243,39 @@ pub fn xadd(input_args: Vec<String>, set_args: &Arc<Mutex<HashMap<String, String
         }
     }
 
-
-
     set_arr[0] = String::from("SET");
 
     println!("{:?}: set_arr to be sent to set and get fn", set_arr);
     println!("{:?}: ids to be set in the array and starts with the hash id", ids);
+    println!("{:?}: input args", input_args[1]);
 
-    match set_get(set_arr.clone(), &set_args) {
-        Some(_) => {
-            match map.insert(input_args[1].clone(), ids) {
-                Some(_v) => {
-                    return Some(input_args[2].clone());
-                },
-                None => {
-                    return None;
-                }
-            }
-        }
-        None => {
-            return None;
-        }
+    match map.insert(input_args[1].clone(), ids.clone()) {
+    None => {
+        println!("{:?}", map.clone());
+        return Some(ids[0].clone());
     }
+    Some(_v) => {
+        println!("Error error");
+        return None;
+    }
+}
+
+    // match set_get(set_arr, &set_args) {
+    //     None => {
+    //         match map.insert(input_args[1].clone(), ids.clone()) { // &Arc<Mutex<HashMap<String, Vec<String>>>> it is the way i want to save my xadd hash keys and the forst element in the vec is the id
+    //             Some(_v) => {
+    //                 println!("{:?}", map.clone());
+    //                 return Some(ids[0].clone());
+    //             },
+    //             None => {
+    //                 println!("Error error");
+    //                 return None;
+    //             }
+    //         }
+    //     }
+    //     Some(_) => {
+    //         return None;
+    //     }
+    // }
+
 }
