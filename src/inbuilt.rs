@@ -220,62 +220,53 @@ pub fn type_checker(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String
     }
 }
 
-pub fn xadd(input_args: Vec<String>, _set_args: &Arc<Mutex<HashMap<String, String>>>, xadd_ids: &Arc<Mutex<HashMap<String, Vec<String>>>>) -> Option<String> {
-    if input_args.len() % 2 == 0 {
-        return None;
+fn parse_id(s: &str) -> Option<(u64, u64)> {
+    let (ms, seq) = s.split_once('-')?;
+    Some((ms.parse().ok()?, seq.parse().ok()?))
+}
+
+pub fn xadd(input_args: Vec<String>, _set_args: &Arc<Mutex<HashMap<String, String>>>, xadd_ids: &Arc<Mutex<HashMap<String, Vec<String>>>>) -> Result<String, String> {
+    if input_args.len() < 5 || input_args.len() % 2 == 0 {
+        return Err("ERR wrong number of arguments for 'xadd' command".into());
     }
 
-    let mut ids = Vec::new();
-    let mut map = xadd_ids.lock().unwrap();
-    let mut set_arr = Vec::new();
+    let stream_key = input_args[1].clone();
+    let raw_id = input_args[2].clone();
 
-    for (index, _) in input_args.iter().enumerate(){
-        if index == 0 {
-            continue;
-        } else if index == 1 {
-            ids.push(input_args[index+1].clone());
-            continue;
-        } else if index % 2 == 1{
-            ids.push(input_args[index].clone());
-            set_arr.push(input_args[index].clone());
-        } else {
-            set_arr.push(input_args[index].clone());
+    let (new_ms, new_seq) = match parse_id(&raw_id) {
+        Some(p) => p,
+        None => {
+            return Err(
+                "ERR Invalid stream ID specified as stream command argument".into(),
+            )
+        }
+    };
+
+    if new_ms == 0 && new_seq == 0 {
+        return Err("ERR The ID specified in XADD must be greater than 0-0".into());
+    }
+
+    let mut map = xadd_ids.lock().unwrap();
+
+    if let Some(existing) = map.get(&stream_key) {
+        if let Some(last) = existing.first().and_then(|s| parse_id(s)) {
+            if (new_ms, new_seq) <= last {
+                return Err(
+                    "ERR The ID specified in XADD is equal or smaller than the target stream top item"
+                        .into(),
+                );
+            }
         }
     }
 
-    set_arr[0] = String::from("SET");
-
-    println!("{:?}: set_arr to be sent to set and get fn", set_arr);
-    println!("{:?}: ids to be set in the array and starts with the hash id", ids);
-    println!("{:?}: input args", input_args[1]);
-
-    match map.insert(input_args[1].clone(), ids.clone()) {
-    None => {
-        println!("{:?}", map.clone());
-        return Some(ids[0].clone());
+    let mut ids = Vec::new();
+    ids.push(raw_id.clone());
+    for pair in input_args[3..].chunks(2) {
+        ids.push(pair[0].clone());
+        ids.push(pair[1].clone());
     }
-    Some(_v) => {
-        println!("Error error");
-        return None;
-    }
-}
 
-    // match set_get(set_arr, &set_args) {
-    //     None => {
-    //         match map.insert(input_args[1].clone(), ids.clone()) { // &Arc<Mutex<HashMap<String, Vec<String>>>> it is the way i want to save my xadd hash keys and the forst element in the vec is the id
-    //             Some(_v) => {
-    //                 println!("{:?}", map.clone());
-    //                 return Some(ids[0].clone());
-    //             },
-    //             None => {
-    //                 println!("Error error");
-    //                 return None;
-    //             }
-    //         }
-    //     }
-    //     Some(_) => {
-    //         return None;
-    //     }
-    // }
+    map.entry(stream_key).or_default().extend(ids);
 
+    Ok(raw_id)
 }
