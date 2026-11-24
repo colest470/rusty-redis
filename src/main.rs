@@ -172,16 +172,16 @@ async fn main() {
                             }
                             "XADD" => {
                                 match inbuilt::xadd(input_arg.clone(), &set_hash, &xadd_ids) {
-                                        Ok(xadd_string) => {
-                                            let bulk = format!("${}\r\n{}\r\n", xadd_string.len(), xadd_string);
-                                            let _ = stream.write_all(bulk.as_bytes()).await;
-                                        }
-                                        Err(msg) => {
-                                            let err = format!("-{}\r\n", msg);
-                                            let _ = stream.write_all(err.as_bytes()).await;
-                                        }
+                                    Ok(id) => {
+                                        let bulk = format!("${}\r\n{}\r\n", id.len(), id);
+                                        let _ = stream.write_all(bulk.as_bytes()).await;
                                     }
-                                },
+                                    Err(msg) => {
+                                        let err = format!("-{}\r\n", msg);   // msg already starts with "ERR "
+                                        let _ = stream.write_all(err.as_bytes()).await;
+                                    }
+                                }
+                            }
                             _ => {
                                 let response = format!(
                                     "-ERR unknown command '{}'\r\n",

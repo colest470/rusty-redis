@@ -249,7 +249,7 @@ pub fn xadd(input_args: Vec<String>, _set_args: &Arc<Mutex<HashMap<String, Strin
     let mut map = xadd_ids.lock().unwrap();
 
     if let Some(existing) = map.get(&stream_key) {
-        if let Some(last) = existing.first().and_then(|s| parse_id(s)) {
+        if let Some(last) = existing.iter().rev().find_map(|s| parse_id(s)) {
             if (new_ms, new_seq) <= last {
                 return Err(
                     "ERR The ID specified in XADD is equal or smaller than the target stream top item"
