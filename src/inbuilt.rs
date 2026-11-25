@@ -233,20 +233,42 @@ pub fn xadd(input_args: Vec<String>, _set_args: &Arc<Mutex<HashMap<String, Strin
     let stream_key = input_args[1].clone();
     let raw_id = input_args[2].clone();
 
-    let (new_ms, new_seq) = match parse_id(&raw_id) {
-        Some(p) => p,
+    let mut map = xadd_ids.lock().unwrap();
+
+    let (new_ms, new_seq) = match raw_id.split_once('-') {
+        Some((ms_str, "*")) => {
+            let ms: u64 = ms_str.parse().map_err(|_| {"ERR Invalid stream ID specified as stream command argument"})?;
+
+            let seq = if let Some(existing) = map.get(&stream_key) {
+                existing
+                    .iter()
+                    .rev()
+                    .find_map(|s| {
+                        let (m, s) = parse_id(s)?;
+                        if m == ms { Some(s) } else { None }
+                    })
+                    .map(|last_seq| last_seq + 1)
+                    .unwrap_or_else(|| if ms == 0 { 1 } else { 0 })
+            } else {
+                if ms == 0 { 1 } else { 0 }
+            };
+
+            (ms, seq)
+        }
+        Some(_) => match parse_id(&raw_id) {
+            Some(p) => p,
+            None => {
+                return Err("ERR Invalid stream ID specified as stream command argument".into())
+            }
+        },
         None => {
-            return Err(
-                "ERR Invalid stream ID specified as stream command argument".into(),
-            )
+            return Err("ERR Invalid stream ID specified as stream command argument".into())
         }
     };
 
     if new_ms == 0 && new_seq == 0 {
         return Err("ERR The ID specified in XADD must be greater than 0-0".into());
     }
-
-    let mut map = xadd_ids.lock().unwrap();
 
     if let Some(existing) = map.get(&stream_key) {
         if let Some(last) = existing.iter().rev().find_map(|s| parse_id(s)) {
@@ -259,8 +281,10 @@ pub fn xadd(input_args: Vec<String>, _set_args: &Arc<Mutex<HashMap<String, Strin
         }
     }
 
+    let final_id = format!("{}-{}", new_ms, new_seq);
+
     let mut ids = Vec::new();
-    ids.push(raw_id.clone());
+    ids.push(final_id.clone());
     for pair in input_args[3..].chunks(2) {
         ids.push(pair[0].clone());
         ids.push(pair[1].clone());
@@ -268,5 +292,5 @@ pub fn xadd(input_args: Vec<String>, _set_args: &Arc<Mutex<HashMap<String, Strin
 
     map.entry(stream_key).or_default().extend(ids);
 
-    Ok(raw_id)
+    Ok(final_id)
 }
