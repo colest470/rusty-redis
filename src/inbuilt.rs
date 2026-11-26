@@ -220,9 +220,30 @@ pub fn type_checker(input_args: Vec<String>, set_hash: &Arc<Mutex<HashMap<String
     }
 }
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 fn parse_id(s: &str) -> Option<(u64, u64)> {
     let (ms, seq) = s.split_once('-')?;
     Some((ms.parse().ok()?, seq.parse().ok()?))
+}
+
+/// Given a time part `ms`, find the next sequence number to use in this stream.
+/// Returns `None` only if `ms-0` would violate the monotonicity rule (not needed
+/// here, but kept for symmetry / future refactors).
+fn next_seq(existing: Option<&Vec<String>>, ms: u64) -> u64 {
+    let default = if ms == 0 { 1 } else { 0 };
+    match existing {
+        Some(entries) => entries
+            .iter()
+            .rev()
+            .find_map(|s| {
+                let (m, seq) = parse_id(s)?;
+                if m == ms { Some(seq) } else { None }
+            })
+            .map(|last_seq| last_seq + 1)
+            .unwrap_or(default),
+        None => default,
+    }
 }
 
 pub fn xadd(input_args: Vec<String>, _set_args: &Arc<Mutex<HashMap<String, String>>>, xadd_ids: &Arc<Mutex<HashMap<String, Vec<String>>>>) -> Result<String, String> {
@@ -235,34 +256,59 @@ pub fn xadd(input_args: Vec<String>, _set_args: &Arc<Mutex<HashMap<String, Strin
 
     let mut map = xadd_ids.lock().unwrap();
 
-    let (new_ms, new_seq) = match raw_id.split_once('-') {
-        Some((ms_str, "*")) => {
-            let ms: u64 = ms_str.parse().map_err(|_| {"ERR Invalid stream ID specified as stream command argument"})?;
+    let (new_ms, new_seq) = if raw_id == "*" {
+        let now_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| "ERR system clock before UNIX epoch".to_string())?
+            .as_millis() as u64;
 
-            let seq = if let Some(existing) = map.get(&stream_key) {
-                existing
-                    .iter()
-                    .rev()
-                    .find_map(|s| {
-                        let (m, s) = parse_id(s)?;
-                        if m == ms { Some(s) } else { None }
-                    })
-                    .map(|last_seq| last_seq + 1)
-                    .unwrap_or_else(|| if ms == 0 { 1 } else { 0 })
+        let existing = map.get(&stream_key);
+
+        let seq = if let Some(last) = existing.and_then(|e| e.iter().rev().find_map(|s| parse_id(s))) {
+            let (last_ms, last_seq) = last;
+            if now_ms > last_ms {
+                next_seq(existing, now_ms)
             } else {
-                if ms == 0 { 1 } else { 0 }
-            };
-
-            (ms, seq)
-        }
-        Some(_) => match parse_id(&raw_id) {
-            Some(p) => p,
-            None => {
-                return Err("ERR Invalid stream ID specified as stream command argument".into())
+                last_seq + 1
             }
-        },
-        None => {
-            return Err("ERR Invalid stream ID specified as stream command argument".into())
+        } else {
+            next_seq(existing, now_ms)
+        };
+
+        let (new_ms, new_seq) = if let Some(last) = existing.and_then(|e| e.iter().rev().find_map(|s| parse_id(s))) {
+            let (last_ms, last_seq) = last;
+            if now_ms > last_ms {
+                (now_ms, seq)
+            } else {
+                (last_ms, last_seq + 1)
+            }
+        } else {
+            (now_ms, seq)
+        };
+
+        (new_ms, new_seq)
+    } else {
+        match raw_id.split_once('-') {
+            Some((ms_str, "*")) => {
+                let ms: u64 = ms_str.parse().map_err(|_| {
+                    "ERR Invalid stream ID specified as stream command argument".to_string()
+                })?;
+                let seq = next_seq(map.get(&stream_key), ms);
+                (ms, seq)
+            }
+            Some(_) => match parse_id(&raw_id) {
+                Some(p) => p,
+                None => {
+                    return Err(
+                        "ERR Invalid stream ID specified as stream command argument".into(),
+                    )
+                }
+            },
+            None => {
+                return Err(
+                    "ERR Invalid stream ID specified as stream command argument".into(),
+                )
+            }
         }
     };
 

@@ -177,7 +177,7 @@ async fn main() {
                                         let _ = stream.write_all(bulk.as_bytes()).await;
                                     }
                                     Err(msg) => {
-                                        let err = format!("-{}\r\n", msg);   // msg already starts with "ERR "
+                                        let err = format!("-{}\r\n", msg); 
                                         let _ = stream.write_all(err.as_bytes()).await;
                                     }
                                 }
