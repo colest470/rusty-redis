@@ -1,5 +1,3 @@
-use rand::Rng;
-
 pub fn parse_command(input: &[u8]) -> Option<Vec<String>> {
     let mut parts = input.split(|&b| b == b'\n');
 

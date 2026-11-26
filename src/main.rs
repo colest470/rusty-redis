@@ -1,11 +1,27 @@
-
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 mod helper;
-mod inbuilt;
+
+mod inbuilt {
+    pub mod exec;
+    pub mod increment;
+    pub mod multi;
+    pub mod set_get;
+    pub mod type_checker;
+    pub mod xadd;
+    pub mod xrange;
+}
+
+use inbuilt::{
+    increment::increment,
+    multi::multi,
+    set_get::set_get,
+    type_checker::type_checker,
+    xadd::xadd,
+};
 
 #[tokio::main]
 async fn main() {
@@ -61,7 +77,7 @@ async fn main() {
 
                             is_multi = false;
 
-                            let reply = inbuilt::exec(&mut qued_commands, &set_hash);
+                            let reply = inbuilt::exec::exec(&mut qued_commands, &set_hash);
 
                             let _ = stream.write_all( reply.as_bytes()).await;
                              
@@ -82,7 +98,7 @@ async fn main() {
                         }
 
                         if is_multi {
-                            let result = inbuilt::multi(
+                            let result = multi(
                                 input_arg.clone(),
                                 &mut qued_commands
                             );
@@ -116,7 +132,7 @@ async fn main() {
                             }
 
                             "SET" | "GET" => {
-                                match inbuilt::set_get(
+                                match set_get(
                                     input_arg.clone(),
                                     &set_hash
                                 ) {
@@ -143,7 +159,7 @@ async fn main() {
                             }
 
                             "INCR" => {
-                                match inbuilt::increment(
+                                match increment(
                                     input_arg.clone(),
                                     &set_hash
                                 ) {
@@ -166,12 +182,12 @@ async fn main() {
                                 }
                             }
                             "TYPE" => {
-                                let ret_string = inbuilt::type_checker(input_arg.clone(), &set_hash, &xadd_ids);
+                                let ret_string = type_checker(input_arg.clone(), &set_hash, &xadd_ids);
 
                                let _ = stream.write_all(format!("+{}\r\n", ret_string).as_bytes()).await;
                             }
                             "XADD" => {
-                                match inbuilt::xadd(input_arg.clone(), &set_hash, &xadd_ids) {
+                                match xadd(input_arg.clone(), &xadd_ids) {
                                     Ok(id) => {
                                         let bulk = format!("${}\r\n{}\r\n", id.len(), id);
                                         let _ = stream.write_all(bulk.as_bytes()).await;
@@ -181,12 +197,19 @@ async fn main() {
                                         let _ = stream.write_all(err.as_bytes()).await;
                                     }
                                 }
+                            },
+                            "XRANGE" => {
+                                match inbuilt::xrange::xrange(input_arg.clone(), &xadd_ids) {
+                                    Some(s) => {
+                                        let _ =stream.write_all(s.as_bytes()).await;
+                                    },
+                                    None => {
+                                        let _ = stream.write_all("-{}\r\n".as_bytes());
+                                    }
+                                }
                             }
                             _ => {
-                                let response = format!(
-                                    "-ERR unknown command '{}'\r\n",
-                                    command
-                                );
+                                let response = format!("-ERR unknown command '{}'\r\n",command);
 
                                 if stream.write_all(response.as_bytes()).await.is_err() {
                                     return;
