@@ -5,11 +5,18 @@ pub fn xrange(input_arg: Vec<String>, xadd_ids: &Arc<Mutex<HashMap<String, Vec<S
     if input_arg.len() < 4 {
         return None;
     }
+    println!("{:?}", input_arg);
 
     let stream_key = &input_arg[1];
     
     let start_id_str = &input_arg[2];
     let end_id_str = &input_arg[3];
+
+    let mut arr_range = "";
+
+    if input_arg[2] == String::from("-") {
+        arr_range = input_arg[3].as_str();
+    }
 
     let start_id = if let Some((_ms, _)) = start_id_str.split_once('-') {
         start_id_str.clone()
@@ -58,7 +65,17 @@ pub fn xrange(input_arg: Vec<String>, xadd_ids: &Arc<Mutex<HashMap<String, Vec<S
                 }
                 i += 1;
             }
-            
+                        
+            if !arr_range.is_empty() {
+                if let Some((start_str, end_str)) = arr_range.split_once('-') {
+                    let start: usize = start_str.trim().parse().expect("Invalid start index");
+                    let end: usize = end_str.trim().parse().expect("Invalid end index");
+
+                    valid_entries = valid_entries[start..=end].to_vec();
+                }
+            }
+
+
             if !valid_entries.is_empty() {
                 response = format!("*{}\r\n", valid_entries.len());
                 for (id, kv_pairs) in valid_entries {
